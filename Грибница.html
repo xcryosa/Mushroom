@@ -1,0 +1,984 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Грибница</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alegreya:ital,wght@0,500;0,800;1,800&family=Alegreya+Sans:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: the mushroom stage (counter, big clickable cap, meadow of grown mushrooms) stays pinned on the left;
+   the shop (upgrades, farm, stats) scrolls on the right. On phones the stage sits on top and the shop follows. */
+:root {
+  color-scheme: dark;
+  --soil: #16110e;
+  --loam: #211a15;
+  --loam-2: #2c231c;
+  --line: #3b2f26;
+  --ink: #eee3d2;
+  --ink-2: #a69886;
+  --cap: #d4452f;
+  --cap-deep: #a3301f;
+  --bone: #efe6d4;
+  --bone-shade: #cdbfa6;
+  --gills: #bba98c;
+  --moss: #a5c45f;
+  --ochre: #d29a45;
+  --spore: #f3c95f;
+  --spring: #a5c45f;
+  --summer: #e0b04a;
+  --autumn: #e0693a;
+  --winter: #8fb4cf;
+  --f-display: 'Alegreya', Georgia, 'Times New Roman', serif;
+  --f-body: 'Alegreya Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --f-mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--soil);
+  color: var(--ink);
+  font: 400 16px/1.4 var(--f-body);
+  padding-inline: 16px;
+  padding-block: 20px;
+}
+h1, h2, p, dl, dd { margin: 0; }
+button { font: inherit; color: inherit; }
+button:focus-visible { outline: 3px solid var(--moss); outline-offset: 3px; }
+
+.app {
+  max-width: 1080px;
+  margin-inline: auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 20px;
+}
+@media (min-width: 860px) {
+  .app { grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); align-items: start; }
+  .stage { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 16px); min-height: 600px; }
+}
+
+/* ---------- stage ---------- */
+.stage {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  overflow: hidden;
+  padding: 18px 16px 0;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  --glow: #33461f;
+  --sc: var(--spring);
+  background:
+    radial-gradient(circle at 50% 52%, var(--glow) 0, transparent 62%),
+    var(--loam);
+}
+.stage.sp { --glow: #33461f; --sc: var(--spring); }
+.stage.su { --glow: #4d3d17; --sc: var(--summer); }
+.stage.au { --glow: #52291a; --sc: var(--autumn); }
+.stage.wi { --glow: #2a3a4b; --sc: var(--winter); }
+.stage.rain { box-shadow: inset 0 0 70px rgba(165, 196, 95, .28); }
+.brand {
+  align-self: flex-start;
+  font: italic 800 1.5rem/1 var(--f-display);
+  letter-spacing: .01em;
+}
+.count { margin-top: 18px; text-align: center; }
+.num {
+  font: 800 clamp(2.4rem, 8vw, 3.4rem)/1 var(--f-display);
+  font-variant-numeric: lining-nums tabular-nums;
+  overflow-wrap: anywhere;
+}
+.unit { margin-top: 2px; color: var(--ink-2); font-size: 1.05rem; }
+.rate {
+  margin-top: 8px;
+  display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 6px 10px;
+  font-family: var(--f-mono); font-size: .9rem; color: var(--ink-2);
+}
+.rate b { color: var(--ink); font-weight: 500; }
+.frenzy {
+  padding: 2px 10px;
+  border-radius: 99px;
+  background: var(--moss);
+  color: #1b2310;
+  font-family: var(--f-body); font-weight: 700; font-size: .85rem;
+}
+.toast { min-height: 2.6em; margin-top: 8px; max-width: 34ch; text-align: center; font-size: .95rem; color: var(--spore); }
+
+.shroom {
+  margin-block: 6px 10px;
+  width: clamp(160px, min(46vw, 32vh), 270px);
+  padding: 0; border: 0; background: none; border-radius: 50%;
+  cursor: pointer; user-select: none; -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+  transition: transform .12s ease-out;
+}
+.shroom svg { display: block; width: 100%; height: auto; overflow: visible; }
+.shroom:hover { transform: scale(1.03); }
+.shroom:active { transform: scale(.96); }
+.shroom.pop svg { animation: squish .22s ease-out; transform-origin: 50% 94%; }
+@keyframes squish {
+  0% { transform: scale(1, 1); }
+  35% { transform: scale(1.06, .9); }
+  100% { transform: scale(1, 1); }
+}
+.s-ground { fill: rgba(0, 0, 0, .38); }
+.s-stem { fill: var(--bone); }
+.s-stem-shade { fill: var(--bone-shade); }
+.s-gills { fill: var(--gills); }
+.s-ring { fill: var(--bone); stroke: var(--bone-shade); stroke-width: 1.5; }
+.s-cap { fill: var(--cap); }
+.s-cap-shade { fill: var(--cap-deep); }
+.s-spots circle { fill: var(--bone); }
+
+.float {
+  position: absolute; z-index: 5; pointer-events: none;
+  transform: translate(-50%, -50%);
+  font: 500 1.1rem/1 var(--f-mono);
+  color: var(--spore);
+  text-shadow: 0 1px 0 #000, 0 0 6px rgba(0, 0, 0, .6);
+  white-space: nowrap;
+}
+.puff {
+  position: absolute; z-index: 4; pointer-events: none;
+  width: 6px; height: 6px; margin: -3px 0 0 -3px;
+  border-radius: 50%; background: var(--bone);
+}
+.gold {
+  position: absolute; z-index: 6;
+  width: 54px; height: 54px; margin: -27px 0 0 -27px;
+  padding: 0; border: 0; border-radius: 50%; cursor: pointer;
+  background: radial-gradient(circle at 38% 34%, #fff6cf 0, var(--spore) 38%, #c98f1f 72%, rgba(201, 143, 31, 0) 74%);
+  box-shadow: 0 0 22px 8px rgba(243, 201, 95, .55);
+  animation: bob 2.2s ease-in-out infinite, appear .35s ease-out;
+}
+@keyframes bob { 0%, 100% { translate: 0 -5px; } 50% { translate: 0 6px; } }
+@keyframes appear { from { scale: 0; } to { scale: 1; } }
+
+.grove {
+  position: relative;
+  width: calc(100% + 32px);
+  height: 92px;
+  margin-top: auto;
+  background: linear-gradient(to top, #0e0a08 0 24px, transparent 24px);
+}
+.mini {
+  position: absolute;
+  display: block;
+  transform-origin: 50% 100%;
+  animation: sprout .6s ease-out backwards;
+}
+.mini svg { display: block; width: 100%; height: 100%; }
+@keyframes sprout { from { transform: scale(0); } to { transform: scale(1); } }
+
+/* ---------- seasons ---------- */
+.s-snow { fill: #f1f5f8; opacity: 0; transition: opacity .8s; }
+.stage.wi .s-snow { opacity: 1; }
+.season { width: 100%; max-width: 340px; margin-top: 12px; display: grid; gap: 6px; }
+.s-top { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.s-name { font: italic 800 1.3rem/1 var(--f-display); color: var(--sc); }
+.s-left { font: 400 .85rem var(--f-mono); color: var(--ink-2); }
+.s-bar { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+.s-bar i { position: relative; height: 5px; border-radius: 3px; background: var(--line); overflow: hidden; }
+.s-bar i::after { content: ''; position: absolute; inset: 0 auto 0 0; width: var(--p, 0%); background: var(--c); }
+.s-bar i:nth-child(1) { --c: var(--spring); }
+.s-bar i:nth-child(2) { --c: var(--summer); }
+.s-bar i:nth-child(3) { --c: var(--autumn); }
+.s-bar i:nth-child(4) { --c: var(--winter); }
+.s-note { min-height: 2.6em; font-size: .9rem; color: var(--ink-2); text-align: center; }
+
+/* ---------- mycelium map ---------- */
+.maphint { font: 400 .85rem var(--f-mono); color: var(--ink-2); }
+.mapgrid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+.cell {
+  position: relative; display: grid; place-items: center;
+  aspect-ratio: 1; padding: 0; overflow: hidden; cursor: default;
+  background: var(--loam); border: 1px solid var(--line); border-radius: 6px;
+  color: var(--ink-2);
+}
+.cell .ic { width: 58%; height: 58%; opacity: .45; }
+.cell .web { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; pointer-events: none; }
+.cell .cc { position: absolute; left: 0; right: 0; bottom: 2px; text-align: center; font: 500 .62rem/1 var(--f-mono); color: var(--ink-2); }
+.cell.rock .ic { opacity: .8; }
+.cell.fr { border-style: dashed; border-color: var(--ink-2); }
+.cell.fr .ic { opacity: .85; }
+.cell.fr.ok { cursor: pointer; border-color: var(--moss); background: var(--loam-2); }
+.cell.fr.ok .cc { color: var(--moss); }
+.cell.fr.ok:hover { transform: scale(1.05); }
+.cell.on { background: var(--loam-2); border: 1px solid var(--bone-shade); }
+.cell.on .ic { opacity: 1; }
+.cell.on .web { opacity: .5; }
+.maplock { margin-top: 8px; color: var(--winter); font-size: .92rem; }
+.legend { margin: 12px 0 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); gap: 6px 16px; }
+.legend li { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: .86rem; color: var(--ink-2); }
+.legend svg { flex: none; width: 20px; height: 20px; }
+
+/* ---------- shop ---------- */
+.side { display: grid; gap: 20px; min-width: 0; }
+.block { min-width: 0; }
+.head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; margin-bottom: 10px; }
+h2 {
+  font: 700 .8rem/1.2 var(--f-body);
+  letter-spacing: .12em; text-transform: uppercase; color: var(--ink-2);
+}
+.seg { display: flex; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; }
+.seg button {
+  padding: 4px 12px; border: 0; background: transparent; cursor: pointer;
+  font: 500 .85rem var(--f-mono); color: var(--ink-2);
+}
+.seg button + button { border-left: 1px solid var(--line); }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--soil); }
+
+.upgrades { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 170px), 1fr)); gap: 8px; }
+.up {
+  display: flex; flex-direction: column; gap: 4px;
+  min-width: 0; padding: 10px 12px; text-align: left; cursor: pointer;
+  background: var(--loam); border: 1px solid var(--line); border-radius: 8px;
+}
+.up:not(:disabled):hover { background: var(--loam-2); border-color: var(--ink-2); }
+.up:disabled { cursor: default; }
+.u-name { font: 700 1.05rem/1.2 var(--f-display); }
+.u-desc { font-size: .88rem; color: var(--ink-2); }
+.u-cost { margin-top: auto; padding-top: 4px; font: 500 .85rem var(--f-mono); color: var(--ink-2); }
+.up.ok .u-cost { color: var(--moss); }
+.empty { color: var(--ink-2); font-size: .95rem; padding-block: 6px; }
+.more { grid-column: 1 / -1; color: var(--ink-2); font-size: .85rem; }
+
+.gens { display: grid; gap: 8px; }
+.gen {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 12px; row-gap: 2px;
+  width: 100%; padding: 10px 14px; text-align: left; cursor: pointer;
+  background: var(--loam); border: 1px solid var(--line); border-radius: 8px;
+}
+.gen:not(:disabled):hover { background: var(--loam-2); border-color: var(--ink-2); }
+.gen:disabled { cursor: default; }
+.g-name { font: 700 1.2rem/1.2 var(--f-display); }
+.g-flavor { font-size: .9rem; color: var(--ink-2); }
+.g-line { margin-top: 4px; font: 400 .85rem var(--f-mono); color: var(--ink-2); overflow-wrap: anywhere; }
+.g-cost { font-weight: 500; }
+.gen.ok .g-cost { color: var(--moss); }
+.g-own {
+  grid-column: 2; grid-row: 1 / span 3; align-self: center;
+  min-width: 2ch; text-align: right;
+  font: 800 2rem/1 var(--f-display); font-variant-numeric: lining-nums tabular-nums;
+  color: var(--ink);
+}
+.gen.locked .g-name, .gen.locked .g-own { color: var(--ink-2); }
+
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px 16px; }
+.stats dt { font-size: .78rem; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-2); }
+.stats dd { margin-top: 2px; font: 500 1rem var(--f-mono); overflow-wrap: anywhere; }
+.foot {
+  margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--line);
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px;
+  font-size: .88rem; color: var(--ink-2);
+}
+.reset {
+  padding: 6px 12px; cursor: pointer; background: transparent;
+  border: 1px solid var(--line); border-radius: 7px; color: var(--ink-2);
+}
+.reset:hover { border-color: var(--cap); color: var(--ink); }
+.reset.armed { background: var(--cap-deep); border-color: var(--cap); color: var(--ink); }
+
+@media (prefers-reduced-motion: reduce) {
+  .shroom, .stage { transition: none; }
+  .shroom.pop svg, .mini, .gold { animation: none; }
+}
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <symbol id="mini" viewBox="0 0 24 24">
+    <path d="M10 13 H14 L13.2 22.5 H10.8 Z" fill="var(--bone)"/>
+    <path d="M2 14 C2 7 7 2 12 2 C17 2 22 7 22 14 Z" fill="currentColor"/>
+    <circle cx="8" cy="8" r="1.6" fill="var(--bone)"/>
+    <circle cx="15" cy="7" r="1.2" fill="var(--bone)"/>
+    <circle cx="13" cy="11" r="1" fill="var(--bone)"/>
+  </symbol>
+  <symbol id="t-soil" viewBox="0 0 24 24">
+    <circle cx="7" cy="14" r="1.4" fill="var(--ink-2)"/><circle cx="14" cy="9" r="1.2" fill="var(--ink-2)"/><circle cx="17" cy="16" r="1.6" fill="var(--ink-2)"/>
+  </symbol>
+  <symbol id="t-damp" viewBox="0 0 24 24">
+    <path d="M12 3 C12 3 5 11 5 15.5 A7 7 0 0 0 19 15.5 C19 11 12 3 12 3 Z" fill="var(--winter)"/>
+  </symbol>
+  <symbol id="t-log" viewBox="0 0 24 24">
+    <rect x="3" y="8" width="18" height="10" rx="3" fill="var(--ochre)"/>
+    <ellipse cx="18" cy="13" rx="3" ry="5" fill="#8a5a24"/>
+    <ellipse cx="18" cy="13" rx="1.2" ry="2.2" fill="var(--ochre)"/>
+  </symbol>
+  <symbol id="t-litter" viewBox="0 0 24 24">
+    <path d="M4 17 C4 9 10 5 17 5 C17 12 12 18 4 17 Z" fill="var(--cap-deep)"/>
+    <path d="M10 21 C10 15 14 12 20 12 C20 17 16 21 10 21 Z" fill="var(--ochre)"/>
+  </symbol>
+  <symbol id="t-tree" viewBox="0 0 24 24">
+    <rect x="11" y="17" width="2" height="5" fill="#6a4a2a"/>
+    <path d="M12 2 L18 10 H15 L20 17 H4 L9 10 H6 Z" fill="var(--moss)"/>
+  </symbol>
+  <symbol id="t-roots" viewBox="0 0 24 24">
+    <g fill="none" stroke="var(--bone-shade)" stroke-width="2" stroke-linecap="round">
+      <path d="M12 3 V12 M12 12 L6 20 M12 12 L18 20 M12 16 L8 14 M12 16 L17 14"/>
+    </g>
+  </symbol>
+  <symbol id="t-rock" viewBox="0 0 24 24">
+    <path d="M3 19 L7 8 L13 5 L20 10 L21 19 Z" fill="var(--line)" stroke="var(--ink-2)" stroke-width="1.2" stroke-linejoin="round"/>
+  </symbol>
+  <symbol id="web" viewBox="0 0 24 24">
+    <g fill="none" stroke="var(--bone)" stroke-width=".8" stroke-linecap="round">
+      <path d="M12 12 L3 5 M12 12 L21 6 M12 12 L5 21 M12 12 L20 20 M12 12 L12 2 M12 12 L2 13 M12 12 L22 12 M12 12 L12 23"/>
+      <circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="8.5"/>
+    </g>
+  </symbol>
+</svg>
+
+<main class="app">
+  <section class="stage" id="stage" aria-label="Грибная поляна">
+    <h1 class="brand">Грибница</h1>
+    <div class="count">
+      <div class="num" id="spores">0</div>
+      <div class="unit" id="unit">спор</div>
+    </div>
+    <div class="rate"><span><b id="cps">0</b> спор/с</span><span class="frenzy" id="frenzy" hidden></span></div>
+    <div class="season">
+      <div class="s-top"><span class="s-name" id="s-name">Весна</span><span class="s-left" id="s-left"></span></div>
+      <div class="s-bar" id="s-bar" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+      <div class="s-note" id="s-note"></div>
+    </div>
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+    <button class="shroom" id="shroom" type="button" aria-label="Собрать споры">
+      <svg viewBox="0 0 240 250" aria-hidden="true" focusable="false">
+        <ellipse class="s-ground" cx="120" cy="238" rx="80" ry="9"/>
+        <path class="s-stem" d="M96 150 C101 178 96 210 82 236 L158 236 C144 210 139 178 144 150 Z"/>
+        <path class="s-stem-shade" d="M126 156 C130 182 128 212 118 236 L158 236 C144 210 139 178 144 150 Z"/>
+        <path class="s-gills" d="M38 146 C70 172 170 172 202 146 Z"/>
+        <path class="s-ring" d="M92 170 C108 180 132 180 148 170 L152 183 C134 195 106 195 88 183 Z"/>
+        <path class="s-cap" d="M16 138 C16 66 64 18 120 18 C176 18 224 66 224 138 C224 148 214 152 204 152 L36 152 C26 152 16 148 16 138 Z"/>
+        <path class="s-cap-shade" d="M16 138 C16 148 26 152 36 152 L204 152 C214 152 224 148 224 138 C200 150 40 150 16 138 Z"/>
+        <g class="s-spots">
+          <circle cx="72" cy="74" r="13"/><circle cx="128" cy="48" r="10"/><circle cx="170" cy="86" r="15"/>
+          <circle cx="110" cy="102" r="9"/><circle cx="62" cy="116" r="8"/><circle cx="200" cy="122" r="7"/>
+          <circle cx="142" cy="124" r="11"/><circle cx="92" cy="50" r="6"/>
+        </g>
+        <path class="s-snow" d="M44 78 C58 44 88 22 120 20 C152 22 182 44 196 78 C184 70 172 72 162 80 C150 70 138 72 128 82 C118 70 104 72 94 82 C84 72 70 70 44 78 Z"/>
+      </svg>
+    </button>
+
+    <div class="grove" id="grove" aria-hidden="true"></div>
+  </section>
+
+  <section class="side">
+    <div class="block">
+      <div class="head"><h2>Карта мицелия</h2><span class="maphint" id="maphint"></span></div>
+      <div class="mapgrid" id="mapgrid" role="group" aria-label="Карта мицелия"></div>
+      <p class="maplock" id="maplock" hidden>Зимой гифы спят. Новые клетки откроются весной.</p>
+      <ul class="legend" id="legend"></ul>
+    </div>
+
+    <div class="block">
+      <div class="head"><h2>Улучшения</h2></div>
+      <div class="upgrades" id="upgrades"></div>
+    </div>
+
+    <div class="block">
+      <div class="head">
+        <h2>Хозяйство</h2>
+        <div class="seg" id="buyamt" role="group" aria-label="Сколько покупать за раз">
+          <button type="button" data-amt="1" aria-pressed="true">×1</button>
+          <button type="button" data-amt="10" aria-pressed="false">×10</button>
+          <button type="button" data-amt="max" aria-pressed="false">Макс</button>
+        </div>
+      </div>
+      <div class="gens" id="gens"></div>
+    </div>
+
+    <div class="block">
+      <div class="head"><h2>Статистика</h2></div>
+      <dl class="stats">
+        <div><dt>Собрано за всё время</dt><dd id="st-total">0</dd></div>
+        <div><dt>Кликов</dt><dd id="st-clicks">0</dd></div>
+        <div><dt>Спор за клик</dt><dd id="st-click">1</dd></div>
+        <div><dt>Время в игре</dt><dd id="st-time">0 мин</dd></div>
+      </dl>
+      <div class="foot">
+        <span id="saved">Прогресс сохраняется сам</span>
+        <button class="reset" id="reset" type="button">Сбросить прогресс</button>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script>
+(function () {
+  'use strict';
+
+  var KEY = 'gribnitsa.v1';
+  var R = 1.15;
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  var GENS = [
+    { name: 'Гифы',              base: 15,        cps: 0.1,   flavor: 'Тонкие нити ищут, чем поживиться.' },
+    { name: 'Мицелий',           base: 100,       cps: 1,     flavor: 'Гифы сплелись в белый ковёр под землёй.' },
+    { name: 'Плодовые тела',     base: 1100,      cps: 8,     flavor: 'Шляпки выходят на свет и сыплют споры.' },
+    { name: 'Гниющее бревно',    base: 12000,     cps: 47,    flavor: 'Старая берёза: еды хватит на годы.' },
+    { name: 'Лесная подстилка',  base: 130000,    cps: 260,   flavor: 'Опавшая хвоя, пропитанная влагой.' },
+    { name: 'Старый лес',        base: 1400000,   cps: 1400,  flavor: 'Ели, мох и грибы в каждой тени.' },
+    { name: 'Микоризная сеть',   base: 20000000,  cps: 7800,  flavor: 'Корни деревьев делятся сахаром с грибницей.' },
+    { name: 'Грибной континент', base: 330000000, cps: 44000, flavor: 'Один опёнок в Орегоне занимает почти тысячу гектаров.' }
+  ];
+
+  /* ---------- seasons and map layout ---------- */
+  var SEASON_LEN = 120;
+  var SEASONS = [
+    { cls: 'sp', name: 'Весна', prod: 1,    click: 1, grow: 0.6,  note: 'Гифы растут быстро: новые клетки карты на 40% дешевле.', msg: 'Пришла весна: расширять карту сейчас дешевле всего.' },
+    { cls: 'su', name: 'Лето',  prod: 1.15, click: 1, grow: 1,    note: 'Тепло: производство спор на 15% выше.', msg: 'Наступило лето: производство +15%.' },
+    { cls: 'au', name: 'Осень', prod: 2,    click: 2, grow: 1,    note: 'Грибной сезон: производство и клики ×2.', msg: 'Грибная осень: производство и клики ×2.' },
+    { cls: 'wi', name: 'Зима',  prod: 0.4,  click: 1, grow: null, note: 'Гифы спят: производство ×0,4, карта не растёт.', msg: 'Пришла зима: производство ×0,4, гифы больше не растут.' }
+  ];
+  var COLS = 7;
+  var LAYOUT = 'e.r#.pe' + '.pw..r.' + '#.l.#.p' + 'pw..e.r' + '.l#.wl.' + 'p.wHw.#';
+  var HOME = LAYOUT.indexOf('H');
+  var TERR = {
+    '.': { name: 'Земля',     ic: 't-soil',   info: 'любая клетка даёт +2% ко всему хозяйству', cost: 1 },
+    'w': { name: 'Влага',     ic: 't-damp',   info: '+20% гифам, мицелию и плодовым телам', gens: [0, 1, 2], b: 0.2, cost: 1.5 },
+    'l': { name: 'Бревно',    ic: 't-log',    info: '+30% гниющему бревну', gens: [3], b: 0.3, cost: 4 },
+    'p': { name: 'Подстилка', ic: 't-litter', info: '+30% лесной подстилке', gens: [4], b: 0.3, cost: 4 },
+    'e': { name: 'Ель',       ic: 't-tree',   info: '+30% старому лесу', gens: [5], b: 0.3, cost: 4 },
+    'r': { name: 'Корни',     ic: 't-roots',  info: '+30% микоризной сети', gens: [6], b: 0.3, cost: 4 },
+    '#': { name: 'Камень',    ic: 't-rock',   info: 'не заселить, придётся обходить', cost: 1 }
+  };
+
+  /* ---------- upgrades ---------- */
+  var UPG = [];
+  UPG.push({ id: 'k1', kind: 'click', name: 'Мягкие пальцы', desc: 'Клик собирает вдвое больше спор.', cost: 100, mult: 2, req: function () { return S.total >= 40; } });
+  UPG.push({ id: 'k2', kind: 'click', name: 'Лупа и пинцет', desc: 'Клик собирает вдвое больше спор.', cost: 5000, mult: 2, req: function () { return S.total >= 1500; } });
+  UPG.push({ id: 'k3', kind: 'click', name: 'Споровый отпечаток', desc: 'Клик собирает вдвое больше спор.', cost: 250000, mult: 2, req: function () { return S.total >= 60000; } });
+  UPG.push({ id: 'p1', kind: 'pct', name: 'Отклик мицелия', desc: 'Каждый клик добавляет 2% от спор в секунду.', cost: 50000, pct: 0.02, req: function () { return S.total >= 15000; } });
+  UPG.push({ id: 'g1', kind: 'global', name: 'Тёплая осень', desc: 'Всё хозяйство производит на 25% больше.', cost: 500000, mult: 1.25, req: function () { return S.total >= 100000; } });
+  UPG.push({ id: 'g2', kind: 'global', name: 'Грибной сезон', desc: 'Всё хозяйство производит на 50% больше.', cost: 25000000, mult: 1.5, req: function () { return S.total >= 5000000; } });
+  UPG.push({ id: 'g3', kind: 'global', name: 'Дождливый год', desc: 'Всё хозяйство производит вдвое больше.', cost: 1000000000, mult: 2, req: function () { return S.total >= 200000000; } });
+  var TIERS = [{ n: 5, c: 10 }, { n: 25, c: 100 }, { n: 50, c: 1000 }];
+  GENS.forEach(function (g, i) {
+    TIERS.forEach(function (t) {
+      UPG.push({
+        id: 'm' + i + '_' + t.n, kind: 'gen', gen: i, mult: 2,
+        name: g.name + ' ×2',
+        desc: 'Нужно ' + t.n + ' шт. Производство удваивается.',
+        cost: g.base * t.c,
+        req: function () { return S.gens[i] >= t.n; }
+      });
+    });
+  });
+  var UPGMAP = {};
+  UPG.forEach(function (u) { UPGMAP[u.id] = u; });
+
+  /* ---------- state ---------- */
+  function fresh() {
+    var map = [];
+    for (var m = 0; m < LAYOUT.length; m++) map.push(m === HOME ? 1 : 0);
+    return { spores: 0, total: 0, clicks: 0, gens: GENS.map(function () { return 0; }), upg: {}, playtime: 0, frenzy: 0, savedAt: Date.now(), map: map, clock: 0 };
+  }
+  function num(v, d) { return typeof v === 'number' && isFinite(v) && v >= 0 ? v : d; }
+  function load() {
+    try {
+      var raw = localStorage.getItem(KEY);
+      if (!raw) return null;
+      var d = JSON.parse(raw);
+      var s = fresh();
+      s.spores = num(d.spores, 0); s.total = num(d.total, 0); s.clicks = num(d.clicks, 0);
+      s.playtime = num(d.playtime, 0); s.frenzy = num(d.frenzy, 0); s.savedAt = num(d.savedAt, Date.now());
+      if (Array.isArray(d.gens)) GENS.forEach(function (_, i) { s.gens[i] = Math.floor(num(d.gens[i], 0)); });
+      if (d.upg && typeof d.upg === 'object') Object.keys(d.upg).forEach(function (k) { if (UPGMAP[k] && d.upg[k]) s.upg[k] = 1; });
+      s.clock = num(d.clock, 0);
+      if (Array.isArray(d.map) && d.map.length === LAYOUT.length) {
+        for (var m = 0; m < LAYOUT.length; m++) s.map[m] = d.map[m] && LAYOUT.charAt(m) !== '#' ? 1 : 0;
+      }
+      s.map[HOME] = 1;
+      return s;
+    } catch (e) { return null; }
+  }
+  var loaded = load();
+  var S = loaded || fresh();
+
+  /* ---------- derived values ---------- */
+  var genMult = [], clickMult = 1, pctSum = 0, globalMult = 1;
+  var terrMult = [], netMult = 1, colonized = 1;
+  function recalc() {
+    clickMult = 1; pctSum = 0; globalMult = 1;
+    genMult = GENS.map(function () { return 1; });
+    terrMult = GENS.map(function () { return 1; });
+    colonized = 0;
+    for (var ti = 0; ti < LAYOUT.length; ti++) {
+      if (!S.map[ti]) continue;
+      colonized++;
+      var tt = terr(ti);
+      if (tt.gens) tt.gens.forEach(function (gi) { terrMult[gi] += tt.b; });
+    }
+    netMult = 1 + 0.02 * (colonized - 1);
+    UPG.forEach(function (u) {
+      if (!S.upg[u.id]) return;
+      if (u.kind === 'click') clickMult *= u.mult;
+      else if (u.kind === 'pct') pctSum += u.pct;
+      else if (u.kind === 'global') globalMult *= u.mult;
+      else if (u.kind === 'gen') genMult[u.gen] *= u.mult;
+    });
+  }
+  function frenzyOn() { return S.frenzy > Date.now(); }
+  function rawCps() {
+    var t = 0;
+    for (var i = 0; i < GENS.length; i++) t += GENS[i].cps * S.gens[i] * genMult[i] * terrMult[i];
+    return t * globalMult * netMult * SEASONS[seasonIdx()].prod;
+  }
+  function unitRate(i) { return GENS[i].cps * genMult[i] * terrMult[i] * globalMult * netMult; }
+  function cps() { return rawCps() * (frenzyOn() ? 7 : 1); }
+  function clickVal() { return (clickMult * SEASONS[seasonIdx()].click + rawCps() * pctSum) * (frenzyOn() ? 7 : 1); }
+  function gain(g) { S.spores += g; S.total += g; }
+
+  function costN(i, n) {
+    var b = GENS[i].base * Math.pow(R, S.gens[i]);
+    return Math.ceil(b * (Math.pow(R, n) - 1) / (R - 1));
+  }
+  function maxN(i) {
+    var b = GENS[i].base * Math.pow(R, S.gens[i]);
+    var n = Math.floor(Math.log(S.spores * (R - 1) / b + 1) / Math.log(R));
+    if (!isFinite(n) || n < 0) n = 0;
+    while (n > 0 && costN(i, n) > S.spores) n--;
+    return n;
+  }
+  var buyAmt = 1;
+  function nFor(i) {
+    if (buyAmt === 'max') return Math.max(1, maxN(i));
+    return buyAmt;
+  }
+
+  /* ---------- formatting ---------- */
+  var SUF = ['', '', 'млн', 'млрд', 'трлн', 'квдрлн', 'квнтлн', 'сксттлн', 'сптлн'];
+  function fmt(n, dec) {
+    if (!isFinite(n)) return '∞';
+    dec = dec || 0;
+    if (n < 1e6) {
+      if (!dec) return Math.floor(n).toLocaleString('ru-RU');
+      return n.toLocaleString('ru-RU', { maximumFractionDigits: dec });
+    }
+    var k = Math.min(SUF.length - 1, Math.floor(Math.log10(n) / 3));
+    return (n / Math.pow(10, 3 * k)).toLocaleString('ru-RU', { maximumFractionDigits: 2 }) + ' ' + SUF[k];
+  }
+  function fmtRate(n) { return fmt(n, n < 100 ? 1 : 0); }
+  function plural(n, f) {
+    n = Math.abs(Math.floor(n));
+    var a = n % 100, b = n % 10;
+    if (a >= 11 && a <= 14) return f[2];
+    if (b === 1) return f[0];
+    if (b >= 2 && b <= 4) return f[1];
+    return f[2];
+  }
+  function fmtTime(sec) {
+    var m = Math.floor(sec / 60), h = Math.floor(m / 60);
+    if (h > 0) return h + ' ч ' + (m % 60) + ' мин';
+    return Math.max(m, 0) + ' мин';
+  }
+
+  /* ---------- DOM ---------- */
+  var $ = function (id) { return document.getElementById(id); };
+  var stage = $('stage'), shroom = $('shroom'), elSpores = $('spores'), elUnit = $('unit'), elCps = $('cps'),
+      elFrenzy = $('frenzy'), elToast = $('toast'), gensEl = $('gens'), upEl = $('upgrades'), groveEl = $('grove'),
+      stTotal = $('st-total'), stClicks = $('st-clicks'), stClick = $('st-click'), stTime = $('st-time'),
+      elSaved = $('saved'), resetBtn = $('reset'),
+      mapGrid = $('mapgrid'), mapHint = $('maphint'), mapLock = $('maplock'), legendEl = $('legend'),
+      sName = $('s-name'), sLeft = $('s-left'), sNote = $('s-note'), sBar = $('s-bar');
+
+  var toastTimer = 0;
+  function toast(msg, ms) {
+    elToast.textContent = msg;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { elToast.textContent = ''; }, ms || 6000);
+  }
+
+  /* farm rows */
+  var rows = GENS.map(function (g, i) {
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'gen'; b.dataset.i = i;
+    var name = document.createElement('span'); name.className = 'g-name';
+    var own = document.createElement('span'); own.className = 'g-own';
+    var fl = document.createElement('span'); fl.className = 'g-flavor';
+    var line = document.createElement('span'); line.className = 'g-line';
+    var cost = document.createElement('span'); cost.className = 'g-cost';
+    var rate = document.createElement('span'); rate.className = 'g-rate';
+    line.appendChild(cost); line.appendChild(rate);
+    b.appendChild(name); b.appendChild(own); b.appendChild(fl); b.appendChild(line);
+    gensEl.appendChild(b);
+    return { b: b, name: name, own: own, fl: fl, cost: cost, rate: rate };
+  });
+  gensEl.addEventListener('click', function (e) {
+    var b = e.target.closest('.gen');
+    if (b && !b.disabled) buyGen(+b.dataset.i);
+  });
+  function buyGen(i) {
+    var n = nFor(i), c = costN(i, n);
+    if (S.spores < c) return;
+    S.spores -= c; S.gens[i] += n;
+    recalc(); render(true);
+  }
+
+  $('buyamt').addEventListener('click', function (e) {
+    var b = e.target.closest('button[data-amt]');
+    if (!b) return;
+    buyAmt = b.dataset.amt === 'max' ? 'max' : +b.dataset.amt;
+    Array.prototype.forEach.call($('buyamt').children, function (x) { x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); });
+    render(true);
+  });
+
+  /* upgrades */
+  var upKey = '';
+  function renderUpgrades(force) {
+    var av = UPG.filter(function (u) { return !S.upg[u.id] && u.req(); }).sort(function (a, b) { return a.cost - b.cost; });
+    var shown = av.slice(0, 8);
+    var key = shown.map(function (u) { return u.id; }).join() + '|' + av.length;
+    if (key !== upKey || force) {
+      upKey = key;
+      upEl.textContent = '';
+      if (!shown.length) {
+        var p = document.createElement('p'); p.className = 'empty';
+        p.textContent = 'Улучшения появятся, когда накопится больше спор.';
+        upEl.appendChild(p);
+      } else {
+        shown.forEach(function (u) {
+          var b = document.createElement('button'); b.type = 'button'; b.className = 'up'; b._u = u;
+          var n = document.createElement('span'); n.className = 'u-name'; n.textContent = u.name;
+          var d = document.createElement('span'); d.className = 'u-desc'; d.textContent = u.desc;
+          var c = document.createElement('span'); c.className = 'u-cost'; c.textContent = fmt(u.cost) + ' спор';
+          b.appendChild(n); b.appendChild(d); b.appendChild(c);
+          upEl.appendChild(b);
+        });
+        if (av.length > shown.length) {
+          var m = document.createElement('p'); m.className = 'more';
+          m.textContent = 'И ещё ' + (av.length - shown.length) + ' дороже.';
+          upEl.appendChild(m);
+        }
+      }
+    }
+    Array.prototype.forEach.call(upEl.querySelectorAll('.up'), function (b) {
+      var ok = S.spores >= b._u.cost;
+      b.disabled = !ok;
+      b.classList.toggle('ok', ok);
+    });
+  }
+  upEl.addEventListener('click', function (e) {
+    var b = e.target.closest('.up');
+    if (!b || b.disabled) return;
+    var u = b._u;
+    if (S.spores < u.cost) return;
+    S.spores -= u.cost; S.upg[u.id] = 1;
+    recalc(); render(true);
+    toast('Куплено: ' + u.name, 3000);
+  });
+
+  /* mycelium map and seasons */
+  var ROWS = LAYOUT.length / COLS;
+  var PLAYABLE = 0;
+  for (var q = 0; q < LAYOUT.length; q++) if (LAYOUT.charAt(q) !== '#') PLAYABLE++;
+  function terr(i) { var ch = LAYOUT.charAt(i); return TERR[ch === 'H' ? '.' : ch]; }
+  function neighbors(i) {
+    var r = Math.floor(i / COLS), c = i % COLS, o = [];
+    if (r > 0) o.push(i - COLS);
+    if (r < ROWS - 1) o.push(i + COLS);
+    if (c > 0) o.push(i - 1);
+    if (c < COLS - 1) o.push(i + 1);
+    return o;
+  }
+  function isFrontier(i) {
+    if (S.map[i] || LAYOUT.charAt(i) === '#') return false;
+    return neighbors(i).some(function (j) { return S.map[j]; });
+  }
+  function seasonIdx() { return Math.floor((S.clock % (SEASON_LEN * 4)) / SEASON_LEN); }
+  function seasonLeft() { return SEASON_LEN - (S.clock % SEASON_LEN); }
+  function cellCost(i) {
+    var g = SEASONS[seasonIdx()].grow;
+    return Math.ceil(30 * Math.pow(1.3, colonized - 1) * terr(i).cost * (g == null ? 1 : g));
+  }
+  function fmtShort(n) {
+    var s;
+    if (n < 1000) return String(n);
+    if (n < 1e6) { s = (n / 1e3).toFixed(n < 1e4 ? 1 : 0); return s.replace('.0', '').replace('.', ',') + 'к'; }
+    if (n < 1e9) { s = (n / 1e6).toFixed(n < 1e7 ? 1 : 0); return s.replace('.0', '').replace('.', ',') + 'М'; }
+    return (n / 1e9).toFixed(1).replace('.0', '').replace('.', ',') + 'Г';
+  }
+  function mmss(sec) { var s = Math.ceil(sec); return Math.floor(s / 60) + ':' + ('0' + (s % 60)).slice(-2); }
+
+  var mapCells = [];
+  for (var ci = 0; ci < LAYOUT.length; ci++) {
+    var cb = document.createElement('button');
+    cb.type = 'button'; cb.className = 'cell'; cb.dataset.i = ci;
+    var icn = ci === HOME
+      ? '<svg class="ic" viewBox="0 0 24 24"><use href="#mini" style="color:var(--cap)"></use></svg>'
+      : '<svg class="ic" viewBox="0 0 24 24"><use href="#' + terr(ci).ic + '"></use></svg>';
+    cb.innerHTML = '<svg class="web" viewBox="0 0 24 24"><use href="#web"></use></svg>' + icn + '<span class="cc"></span>';
+    mapGrid.appendChild(cb);
+    mapCells.push({ b: cb, cc: cb.querySelector('.cc'), key: null });
+  }
+  ['.', 'w', 'l', 'p', 'e', 'r', '#'].forEach(function (ch) {
+    var t = TERR[ch], li = document.createElement('li');
+    li.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><use href="#' + t.ic + '"></use></svg>';
+    var sp = document.createElement('span');
+    sp.textContent = t.name + ': ' + t.info;
+    li.appendChild(sp);
+    legendEl.appendChild(li);
+  });
+
+  function updateMap() {
+    var winter = SEASONS[seasonIdx()].grow == null;
+    for (var i = 0; i < mapCells.length; i++) {
+      var on = S.map[i] === 1, rock = LAYOUT.charAt(i) === '#', fr = isFrontier(i);
+      var cost = fr ? cellCost(i) : 0;
+      var ok = fr && !winter && S.spores >= cost;
+      var key = (on ? 1 : 0) + '' + (fr ? 1 : 0) + (ok ? 1 : 0) + (winter ? 1 : 0) + ':' + cost;
+      var mc = mapCells[i];
+      if (mc.key === key) continue;
+      mc.key = key;
+      mc.b.className = 'cell' + (on ? ' on' : '') + (rock ? ' rock' : '') + (fr ? ' fr' : '') + (ok ? ' ok' : '');
+      mc.b.disabled = !ok;
+      mc.cc.textContent = fr && !winter ? fmtShort(cost) : '';
+      var t = i === HOME ? { name: 'Начало грибницы' } : terr(i);
+      mc.b.setAttribute('aria-label', t.name + (on ? ', заселено' : fr ? (winter ? ', зимой не растёт' : ', ' + fmt(cost) + ' спор') : rock ? ', камень' : ', пока далеко'));
+    }
+  }
+  mapGrid.addEventListener('click', function (e) {
+    var b = e.target.closest('.cell');
+    if (b && !b.disabled) buyCell(+b.dataset.i);
+  });
+  function buyCell(i) {
+    if (SEASONS[seasonIdx()].grow == null || !isFrontier(i)) return;
+    var c = cellCost(i);
+    if (S.spores < c) return;
+    S.spores -= c; S.map[i] = 1;
+    recalc(); render(true);
+    toast('Мицелий дотянулся: ' + terr(i).name.toLowerCase() + '.', 3500);
+  }
+  var shownSeason = -1;
+
+  /* meadow of grown mushrooms */
+  var groveCount = 0;
+  function rnd(i) { var x = Math.sin(i * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); }
+  var CAPS = ['var(--cap)', 'var(--ochre)', 'var(--moss)'];
+  function addMini(i) {
+    var s = document.createElement('span');
+    var size = 16 + rnd(i * 5 + 3) * 22;
+    var bottom = 8 + rnd(i * 3 + 2) * 36;
+    var pick = rnd(i * 7 + 4);
+    s.className = 'mini';
+    s.style.cssText = 'left:' + (2 + rnd(i * 2 + 1) * 92).toFixed(1) + '%;bottom:' + bottom.toFixed(0) + 'px;width:' + size.toFixed(0) +
+      'px;height:' + size.toFixed(0) + 'px;z-index:' + (100 - Math.round(bottom)) + ';color:' + (pick < 0.6 ? CAPS[0] : pick < 0.85 ? CAPS[1] : CAPS[2]);
+    s.innerHTML = '<svg viewBox="0 0 24 24"><use href="#mini"></use></svg>';
+    groveEl.appendChild(s);
+  }
+  function renderGrove() {
+    var owned = S.gens.reduce(function (a, b) { return a + b; }, 0);
+    var want = Math.min(40, owned);
+    if (want < groveCount) { groveEl.textContent = ''; groveCount = 0; }
+    while (groveCount < want) { addMini(groveCount); groveCount++; }
+  }
+
+  /* ---------- clicking ---------- */
+  function pop() {
+    shroom.classList.remove('pop');
+    void shroom.offsetWidth;
+    shroom.classList.add('pop');
+  }
+  function floater(x, y, txt) {
+    var el = document.createElement('span');
+    el.className = 'float'; el.textContent = txt;
+    el.style.left = x + 'px'; el.style.top = y + 'px';
+    stage.appendChild(el);
+    var dx = (Math.random() - 0.5) * 50;
+    var frames = reduce
+      ? [{ opacity: 1 }, { opacity: 0 }]
+      : [{ transform: 'translate(-50%,-50%)', opacity: 1 }, { transform: 'translate(calc(-50% + ' + dx + 'px),-130px)', opacity: 0 }];
+    var a = el.animate(frames, { duration: 900, easing: 'ease-out' });
+    a.onfinish = function () { el.remove(); };
+  }
+  function puff(x, y) {
+    if (reduce) return;
+    for (var i = 0; i < 6; i++) {
+      var p = document.createElement('span');
+      p.className = 'puff'; p.style.left = x + 'px'; p.style.top = y + 'px';
+      stage.appendChild(p);
+      var ang = Math.random() * Math.PI * 2, d = 30 + Math.random() * 40;
+      var a = p.animate([
+        { transform: 'translate(0,0) scale(1)', opacity: 0.9 },
+        { transform: 'translate(' + Math.cos(ang) * d + 'px,' + (Math.sin(ang) * d - 20) + 'px) scale(.2)', opacity: 0 }
+      ], { duration: 650, easing: 'ease-out' });
+      a.onfinish = (function (el) { return function () { el.remove(); }; })(p);
+    }
+  }
+  shroom.addEventListener('click', function (e) {
+    var v = clickVal();
+    gain(v); S.clicks++;
+    pop();
+    var r = stage.getBoundingClientRect(), x, y;
+    if (e.clientX || e.clientY) { x = e.clientX - r.left; y = e.clientY - r.top; }
+    else { var b = shroom.getBoundingClientRect(); x = b.left + b.width / 2 - r.left; y = b.top + b.height * 0.3 - r.top; }
+    floater(x, y, '+' + fmt(v, v < 10 ? 1 : 0));
+    puff(x, y);
+    render();
+  });
+
+  /* ---------- golden spore ---------- */
+  var goldTimer = 0;
+  function scheduleGold(ms) {
+    clearTimeout(goldTimer);
+    goldTimer = setTimeout(spawnGold, ms == null ? 45000 + Math.random() * 65000 : ms);
+  }
+  function spawnGold() {
+    if (document.hidden) { scheduleGold(8000); return; }
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'gold';
+    b.setAttribute('aria-label', 'Золотая спора: нажмите, чтобы получить бонус');
+    b.style.left = (14 + Math.random() * 72) + '%';
+    b.style.top = (20 + Math.random() * 45) + '%';
+    stage.appendChild(b);
+    var done = false;
+    b.addEventListener('click', function () {
+      done = true; b.remove();
+      if (Math.random() < 0.5) {
+        var g = Math.max(cps() * 180, clickVal() * 30);
+        gain(g);
+        toast('Золотая спора: +' + fmt(g) + ' спор сразу.');
+      } else {
+        S.frenzy = Date.now() + 30000;
+        toast('Грибной дождь: всё растёт в 7 раз быстрее 30 секунд.');
+      }
+      render();
+      scheduleGold();
+    });
+    setTimeout(function () { if (!done) { b.remove(); scheduleGold(); } }, 13000);
+  }
+
+  /* ---------- render ---------- */
+  var tickN = 0;
+  function render(force) {
+    var sp = Math.floor(S.spores);
+    elSpores.textContent = fmt(S.spores);
+    elUnit.textContent = S.spores < 1e6 ? plural(sp, ['спора', 'споры', 'спор']) : 'спор';
+    var c = cps();
+    elCps.textContent = fmtRate(c);
+    var on = frenzyOn();
+    stage.classList.toggle('rain', on);
+    elFrenzy.hidden = !on;
+    if (on) elFrenzy.textContent = 'Грибной дождь ×7 · ' + Math.ceil((S.frenzy - Date.now()) / 1000) + ' с';
+
+    for (var i = 0; i < GENS.length; i++) {
+      var g = GENS[i], r = rows[i];
+      var unlocked = S.gens[i] > 0 || S.total >= g.base * 0.5;
+      var n = nFor(i), cost = costN(i, n), ok = unlocked && S.spores >= cost;
+      r.b.disabled = !ok;
+      r.b.classList.toggle('ok', ok);
+      r.b.classList.toggle('locked', !unlocked);
+      if (!unlocked) {
+        r.name.textContent = '???';
+        r.fl.textContent = 'Накопите ещё спор, чтобы открыть.';
+        r.cost.textContent = ''; r.rate.textContent = '';
+        r.own.textContent = '';
+      } else {
+        r.name.textContent = g.name;
+        r.fl.textContent = g.flavor;
+        r.cost.textContent = (n > 1 ? '×' + n + ' · ' : '') + fmt(cost) + ' спор';
+        r.rate.textContent = ' · по ' + fmtRate(unitRate(i)) + '/с каждая' +
+          (terrMult[i] > 1 ? ' · карта ×' + terrMult[i].toLocaleString('ru-RU', { maximumFractionDigits: 2 }) : '');
+        r.own.textContent = S.gens[i];
+      }
+    }
+    var si = seasonIdx(), se = SEASONS[si];
+    if (si !== shownSeason) {
+      SEASONS.forEach(function (x) { stage.classList.remove(x.cls); });
+      stage.classList.add(se.cls);
+      sName.textContent = se.name;
+      sNote.textContent = se.note;
+      mapLock.hidden = se.grow != null;
+      shownSeason = si;
+    }
+    sLeft.textContent = 'ещё ' + mmss(seasonLeft());
+    for (var k = 0; k < 4; k++) {
+      var p = k < si ? 100 : k === si ? (S.clock % SEASON_LEN) / SEASON_LEN * 100 : 0;
+      sBar.children[k].style.setProperty('--p', p.toFixed(1) + '%');
+    }
+    mapHint.textContent = 'Заселено ' + colonized + ' из ' + PLAYABLE + ' · сеть +' + Math.round((netMult - 1) * 100) + '%';
+    updateMap();
+    renderUpgrades(force);
+    if (force || tickN % 5 === 0) {
+      renderGrove();
+      stTotal.textContent = fmt(S.total);
+      stClicks.textContent = S.clicks.toLocaleString('ru-RU');
+      stClick.textContent = fmt(clickVal(), 1);
+      stTime.textContent = fmtTime(S.playtime);
+    }
+  }
+
+  /* ---------- loop and saving ---------- */
+  var last = Date.now();
+  function tick() {
+    var now = Date.now();
+    var dt = Math.min(Math.max((now - last) / 1000, 0), 3600);
+    last = now;
+    var g = cps() * dt;
+    S.spores += g; S.total += g; S.playtime += dt;
+    var before = seasonIdx();
+    S.clock += dt;
+    var after = seasonIdx();
+    if (after !== before) toast(SEASONS[after].msg, 7000);
+    tickN++;
+    render();
+  }
+  function save() {
+    try {
+      S.savedAt = Date.now();
+      localStorage.setItem(KEY, JSON.stringify(S));
+      elSaved.textContent = 'Сохранено в ' + new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+    } catch (e) {
+      elSaved.textContent = 'В этом окне сохранение недоступно';
+    }
+  }
+
+  var armed = false, armTimer = 0;
+  resetBtn.addEventListener('click', function () {
+    if (!armed) {
+      armed = true;
+      resetBtn.classList.add('armed');
+      resetBtn.textContent = 'Нажмите ещё раз, чтобы стереть всё';
+      armTimer = setTimeout(disarm, 4000);
+      return;
+    }
+    disarm();
+    S = fresh();
+    recalc();
+    groveEl.textContent = ''; groveCount = 0;
+    mapCells.forEach(function (c) { c.key = null; });
+    shownSeason = -1;
+    try { localStorage.removeItem(KEY); } catch (e) {}
+    render(true);
+    toast('Прогресс сброшен. Новая грибница ждёт.');
+  });
+  function disarm() {
+    armed = false; clearTimeout(armTimer);
+    resetBtn.classList.remove('armed');
+    resetBtn.textContent = 'Сбросить прогресс';
+  }
+
+  document.addEventListener('visibilitychange', function () { if (document.hidden) save(); });
+  window.addEventListener('pagehide', save);
+
+  /* ---------- start ---------- */
+  recalc();
+  if (loaded) {
+    var away = Math.max(0, (Date.now() - S.savedAt) / 1000);
+    if (away > 60) {
+      var g0 = rawCps() * Math.min(away, 28800) * 0.5;
+      S.clock += Math.min(away, 28800);
+      if (g0 > 0) {
+        gain(g0);
+        toast('Пока вас не было (' + fmtTime(away) + '), мицелий собрал ' + fmt(g0) + ' спор.', 9000);
+      }
+    }
+  }
+  render(true);
+  setInterval(tick, 100);
+  setInterval(save, 10000);
+  scheduleGold(20000);
+})();
+</script>
+
+</body></html>
